@@ -4477,6 +4477,7 @@
       let isCallActive = false;
       let isFullscreen = false;
       let callReplyTimer = null;
+      let callVoicePauseTimer = null; // 用户说话停顿检测计时器
       let incomingCallTimeout = null;
       let callRecognition = null;
       let callListening = false;
@@ -4703,11 +4704,13 @@
         if (!('Notification' in window)) return;
         const show = () => {
           const payload = { body: body, icon: currentAvatarDataUrl || '' };
-          // 优先通过 Service Worker 弹出（页面在后台/退出前台时更可靠），否则退回页面内 Notification
-          if ('serviceWorker' in navigator && navigator.serviceWorker.ready) {
-            navigator.serviceWorker.ready.then(reg => {
-              if (reg.showNotification) return reg.showNotification(title, payload);
-              new Notification(title, payload);
+          // 仅当已有 Service Worker 控制页面时才走 SW 通道；
+          // 否则 navigator.serviceWorker.ready 是永不 resolve 的 Promise，通知将永远发不出去
+          const hasController = 'serviceWorker' in navigator && !!navigator.serviceWorker.controller;
+          if (hasController) {
+            navigator.serviceWorker.getRegistration().then(reg => {
+              if (reg && reg.showNotification) reg.showNotification(title, payload);
+              else new Notification(title, payload);
             }).catch(() => { new Notification(title, payload); });
           } else {
             new Notification(title, payload);
@@ -6141,7 +6144,6 @@
       rateSlider.addEventListener('input', function() {
         replyRate = parseInt(this.value, 10);
         updateRateDisplay();
-        if (isCallActive) resetCallReplyTimer();
       });
 
       function updateProactiveRateDisplay() {
@@ -6636,7 +6638,7 @@
         callReplyDisplay.textContent = '';
         callRepliesList.innerHTML = '';
         callRepliesList.scrollTop = callRepliesList.scrollHeight;
-        resetCallReplyTimer();
+        setCallStatus('等待对方说话…');
       }
 
       function startCall() {
@@ -6719,6 +6721,7 @@
         callAccepted = false;
         if (callTimer) { clearInterval(callTimer); callTimer = null; }
         if (callReplyTimer) { clearTimeout(callReplyTimer); callReplyTimer = null; }
+        if (callVoicePauseTimer) { clearTimeout(callVoicePauseTimer); callVoicePauseTimer = null; }
         if (callListening) stopCallListening(false);
         hideIncomingCallOverlay();
         callWidget.style.display = 'none';
@@ -6838,41 +6841,29 @@
 
       function handleRecognizedVoice(text) {
         if (!isCallActive || !text) return;
-        const responseDelay = 700 + Math.random() * 900;
-        setTimeout(() => {
+        // 每次识别到语音就重置停顿计时：用户停止说话 3 秒后判定说完
+        if (callVoicePauseTimer) clearTimeout(callVoicePauseTimer);
+        callVoicePauseTimer = setTimeout(() => {
+          callVoicePauseTimer = null;
           if (!isCallActive) return;
           const allCards = getAllCardTexts();
           if (allCards.length === 0) return;
-          const randomCard = allCards[Math.floor(Math.random() * allCards.length)];
-          appendCallMessage(randomCard, false); // 梦角回复留在通话界面
-          if (notificationEnabled) sendNotification(currentNickname + '回复了你的语音', randomCard);
-        }, responseDelay);
+          // 梦角一次性回复 1-2 句
+          const count = Math.floor(Math.random() * 2) + 1;
+          const replies = [];
+          for (let i = 0; i < count; i++) {
+            replies.push(allCards[Math.floor(Math.random() * allCards.length)]);
+          }
+          replies.forEach(r => appendCallMessage(r, false)); // 回复留在通话界面
+          sendNotification(currentNickname + '回复了你的语音', replies.join(' '));
+        }, 3000);
       }
 
+      // 用户不说话，梦角就不回复：通话中不再有任何定时主动回复，
+      // 梦角的回复只由 handleRecognizedVoice（识别到用户语音）触发
       function resetCallReplyTimer() {
+        // 通话中梦角不再主动定时回复：用户说话（语音识别）时才由 handleRecognizedVoice 回复
         if (callReplyTimer) { clearTimeout(callReplyTimer); callReplyTimer = null; }
-        if (!isCallActive) return;
-        const delay = replyRate * 1000;
-        callReplyTimer = setTimeout(function tick() {
-          if (!isCallActive) return;
-          const allCards = getAllCardTexts();
-          if (allCards.length > 0) {
-            const count = Math.floor(Math.random() * 2) + 1;
-            for (let i = 0; i < count; i++) {
-              if (Math.random() < 0.1) {
-                const cardCount = Math.floor(Math.random() * 3) + 1;
-                const cards = [];
-                for (let j = 0; j < cardCount; j++) {
-                  cards.push(allCards[Math.floor(Math.random() * allCards.length)]);
-                }
-                appendCallMessage(cards.join(' '), false);
-              } else {
-                appendCallMessage(allCards[Math.floor(Math.random() * allCards.length)], false);
-              }
-            }
-          }
-          callReplyTimer = setTimeout(tick, delay);
-        }, delay);
       }
 
       // 右上角图片按钮：从本地图库选择通话背景
