@@ -625,11 +625,14 @@
       text-align: center;
       background: transparent;
       color: #999;
-      border: none;
+      border: 1px solid rgba(0,0,0,0.10);
       letter-spacing: -0.01em;
     }
 
-    .system-bubble.rejected { color: #ff3b30; }
+    .system-bubble.rejected {
+      color: #ff3b30;
+      border-color: rgba(255,59,48,0.40);
+    }
     .system-bubble.recall { color: #999; font-style: italic; font-size: 12px; }
 
     /* 拍一拍消息 */
@@ -4756,6 +4759,7 @@
             const sb = node.querySelector('.system-bubble');
             item.text = sb ? sb.textContent.trim() : '';
             item.rejected = sb ? sb.classList.contains('rejected') : false;
+            item.html = sb ? sb.innerHTML : '';
           }
           items.push(item);
         });
@@ -4808,7 +4812,14 @@
             chatMessages.appendChild(row);
             return;
           }
-          if (it.t === 'system') { addSystemMessage(it.text || '', !!it.rejected); return; }
+          if (it.t === 'system') {
+            const row = addSystemMessage(it.text || '', !!it.rejected);
+            if (it.html) {
+              const sb = row.querySelector('.system-bubble');
+              if (sb) sb.innerHTML = it.html;
+            }
+            return;
+          }
           const { row, wrapper } = createMessageRow(!!it.out);
           row.dataset.msgType = it.t;
           let bubble = null;
@@ -5564,6 +5575,17 @@
         row.appendChild(bubble);
         chatMessages.appendChild(row);
         scrollToBottom();
+        return row;
+      }
+
+      // 「对方已拒绝」系统消息：文本 + 带斜杠的摄像头图标（镜头已关闭）
+      function addCallRejectedMessage() {
+        const row = addSystemMessage('', true);
+        const bubble = row.querySelector('.system-bubble');
+        if (bubble) {
+          bubble.innerHTML = '对方已拒绝 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="vertical-align:-2px" aria-hidden="true"><path d="M21 6.5l-4 4V7c0-.55-.45-1-1-1H9.82L21 17.18V6.5zM3.27 2L2 3.27 4.73 6H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.21 0 .39-.08.54-.18L19.73 21 21 19.73 3.27 2z"/></svg>';
+        }
+        return row;
       }
 
       // 撤回消息
@@ -6661,7 +6683,7 @@
           } else {
             showToast('对方拒绝了通话');
             setTimeout(hideToast, 1500);
-            addSystemMessage('对方拒绝了您的通话邀请', true);
+            addCallRejectedMessage();
           }
         }, 1500);
       }
@@ -6684,7 +6706,7 @@
           incomingCallTimeout = null;
           incomingCallOverlay.classList.remove('open');
           callAccepted = false;
-          addSystemMessage('未接听语音通话', true);
+          addSystemMessage('您未接听对方的电话', true);
         }, 30000);
       }
 
@@ -6703,7 +6725,7 @@
         callAccepted = false;
         showToast('已挂断');
         setTimeout(hideToast, 1000);
-        addSystemMessage('你挂断了' + currentNickname + '的语音通话');
+        addSystemMessage('您拒绝了对方的通话', true);
       }
 
       function updateCallTime() {
@@ -6733,7 +6755,7 @@
         if (wasActive && wasAccepted) {
           const mins = Math.floor(duration / 60);
           const secs = duration % 60;
-          const timeStr = mins > 0 ? mins + '分' + secs + '秒' : secs + '秒';
+          const timeStr = String(mins).padStart(2, '0') + '：' + String(secs).padStart(2, '0');
           addSystemMessage('通话结束 ' + timeStr, false);
         }
       }
