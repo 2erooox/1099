@@ -4674,7 +4674,7 @@
             setTimeout(() => {
               if (mengjiaoPatListData.length > 0 && Math.random() < 0.5) {
                 const randomPat = mengjiaoPatListData[Math.floor(Math.random() * mengjiaoPatListData.length)];
-                addPatMessage(randomPat, false);
+                maybeRecallMengjiaoMessage(addPatMessage(randomPat, false));
                 if (notificationEnabled) {
                   sendNotification('梦角拍了拍你', randomPat);
                 }
@@ -5604,20 +5604,21 @@
         hideMsgMenu();
       }
 
-      function mengjiaoRecall() {
-        const incomingRows = chatMessages.querySelectorAll('.message-row.incoming');
-        if (incomingRows.length === 0) return;
-        if (Math.random() < 0.1) {
-          const randomRow = incomingRows[Math.floor(Math.random() * incomingRows.length)];
-          if (randomRow.dataset.msgType === 'system') return;
+      // 梦角每发一句话有 7% 的概率当场决定撤回（1.5~4 秒后执行撤回）；
+      // 若发送时没有抽中撤回，则这句话永远不会被撤回
+      function maybeRecallMengjiaoMessage(row) {
+        if (!row) return;
+        if (Math.random() >= 0.07) return;
+        setTimeout(() => {
+          if (!row || !row.isConnected || !row.parentNode) return;
           const recallDiv = document.createElement('div');
           recallDiv.className = 'recall-row';
           const recallBubble = document.createElement('div');
           recallBubble.className = 'recall-bubble';
           recallBubble.textContent = currentNickname + '撤回了一条消息';
           recallDiv.appendChild(recallBubble);
-          randomRow.parentNode.replaceChild(recallDiv, randomRow);
-        }
+          row.parentNode.replaceChild(recallDiv, row);
+        }, 1500 + Math.random() * 2500);
       }
 
       // ===== 长按 =====
@@ -5799,11 +5800,11 @@
             const rand = Math.random();
             if (mengjiaoEmojiListData.length > 0 && rand < 0.15) {
               const idx = Math.floor(Math.random() * mengjiaoEmojiListData.length);
-              addEmojiMessage(mengjiaoEmojiListData[idx], false);
+              maybeRecallMengjiaoMessage(addEmojiMessage(mengjiaoEmojiListData[idx], false));
               if (notificationEnabled) sendNotification('梦角发来一张表情包', '');
             } else if (rand < 0.30) {
               const randomCard = allCards[Math.floor(Math.random() * allCards.length)];
-              addVoiceMessage(randomCard, false);
+              maybeRecallMengjiaoMessage(addVoiceMessage(randomCard, false));
               if (notificationEnabled) sendNotification('梦角发来一条语音条', randomCard);
             } else if (rand < 0.40) {
               const cardCount = Math.floor(Math.random() * 3) + 1;
@@ -5811,14 +5812,14 @@
               for (let j = 0; j < cardCount; j++) {
                 cards.push(allCards[Math.floor(Math.random() * allCards.length)]);
               }
-              addMessage(cards.join(' '), false);
+              maybeRecallMengjiaoMessage(addMessage(cards.join(' '), false));
               if (notificationEnabled) sendNotification('梦角发来消息', cards.join(' '));
             } else if (rand < 0.50) {
               const min = parseFloat(redpacketAmountMin.value) || 1;
               const max = parseFloat(redpacketAmountMax.value) || 20;
               const amount = (Math.random() * (max - min) + min).toFixed(2);
               const color = redpacketColor.value || '#4a4a4a';
-              addRedpacketMessage(amount, color, false);
+              maybeRecallMengjiaoMessage(addRedpacketMessage(amount, color, false));
               if (notificationEnabled) sendNotification('梦角发来红包', '¥' + amount);
             } else {
               let quoteText = null;
@@ -5835,7 +5836,7 @@
                 if (quoteText) quoteName = '我';
               }
               const randomIndex = Math.floor(Math.random() * allCards.length);
-              addMessage(allCards[randomIndex], false, quoteText, quoteName);
+              maybeRecallMengjiaoMessage(addMessage(allCards[randomIndex], false, quoteText, quoteName));
               if (notificationEnabled) sendNotification('梦角发来消息', allCards[randomIndex]);
             }
 
@@ -5844,7 +5845,7 @@
             // 10%概率随机发送拍一拍
             if (Math.random() < 0.1 && mengjiaoPatListData.length > 0) {
               const randomPat = mengjiaoPatListData[Math.floor(Math.random() * mengjiaoPatListData.length)];
-              addPatMessage(randomPat, false);
+              maybeRecallMengjiaoMessage(addPatMessage(randomPat, false));
               if (notificationEnabled) sendNotification('梦角拍了拍你', randomPat);
             }
           }, delay);
@@ -6247,7 +6248,7 @@
             } else {
               content = allCards[Math.floor(Math.random() * allCards.length)];
             }
-            addMessage(content, false);
+            maybeRecallMengjiaoMessage(addMessage(content, false));
             sendNotification('梦角主动发来消息', content);
             if (i === count - 1) setTimeout(hideTyping, 600);
           }, i * 900);
@@ -7063,10 +7064,6 @@
         proactiveRateControl.style.display = proactiveEnabled ? 'flex' : 'none';
         scheduleProactiveMessages();
       });
-
-      setInterval(() => {
-        if (chatMessages.querySelectorAll('.message-row.incoming').length > 0) mengjiaoRecall();
-      }, 30000);
 
       window.addEventListener('resize', scrollToBottom);
     })();
