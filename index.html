@@ -4701,6 +4701,7 @@
       let musicIndex = -1;
       let musicPlaying = false;
       let musicSessionCount = 0; // 本次一起听歌已播放的歌曲数（重复也算）
+      let musicErrorCount = 0; // 连续播放失败计数（用于熔断，防止无限报错循环）
       let keepAliveEnabled = false;
       let notificationEnabled = false;
 
@@ -6301,20 +6302,54 @@
         if (musicListData.length === 0) return;
         // 顺序播放：到末尾后回到开头循环
         musicIndex = ((index % musicListData.length) + musicListData.length) % musicListData.length;
-        if (!musicAudio) musicAudio = new Audio();
-        musicAudio.src = normalizeMusicItem(musicListData[musicIndex]).playUrl;
-        musicAudio.onended = () => { playMusicAt(musicIndex + 1); };
-        musicAudio.onerror = () => { playMusicAt(musicIndex + 1); };
+        if (!musicAudio) {
+          musicAudio = new Audio();
+          musicAudio.preload = 'auto';
+          // 真实播放状态跟踪：真正开始出声时才确认播放中
+          musicAudio.onplaying = () => { musicErrorCount = 0; musicPlaying = true; updateMusicWidget(); };
+          musicAudio.onpause = () => { if (!musicAudio.ended) { musicPlaying = false; updateMusicWidget(); } };
+        }
+        const item = normalizeMusicItem(musicListData[musicIndex]);
         musicSessionCount++; // 每开始播放一首歌都计数（重复、循环也算）
-        const p = musicAudio.play();
-        if (p && p.catch) p.catch(() => {
-          // 浏览器拦截了自动播放：暂停状态等待用户点击浮窗播放
-          musicPlaying = false;
+
+        const startPlay = (src) => {
+          musicAudio.src = src;
+          musicAudio.onended = () => { playMusicAt(musicIndex + 1); };
+          musicAudio.onerror = () => {
+            musicErrorCount++;
+            // 连续播放失败（链接失效、版权限制、网络异常）：尝试下一首；
+            // 整个歌单都无法播放时停止，避免无限报错循环
+            if (musicErrorCount < Math.max(3, musicListData.length)) {
+              playMusicAt(musicIndex + 1);
+            } else {
+              stopMusicSession(false);
+              showToast('歌曲播放失败，请检查链接或网络');
+              setTimeout(hideToast, 2000);
+            }
+          };
+          const p = musicAudio.play();
+          if (p && p.catch) p.catch(() => {
+            // 浏览器拦截了自动播放：保持暂停，等待用户点击页面或浮窗播放按钮恢复
+            musicPlaying = false;
+            updateMusicWidget();
+          });
+          musicPlaying = true;
+          // 播放哪首，浮窗就显示哪首的歌名
           updateMusicWidget();
-        });
-        musicPlaying = true;
-        // 播放哪首，浮窗就显示哪首的歌名
-        updateMusicWidget();
+        };
+
+        // QQ音乐解析接口返回的是 JSON，必须先取出其中的真实音频地址再播放
+        if (/api\.injahow\.cn/.test(item.playUrl)) {
+          fetch(item.playUrl)
+            .then(r => r.json())
+            .then(d => {
+              if (d && d.url) startPlay(d.url);
+              else startPlay(item.playUrl);
+            })
+            .catch(() => startPlay(item.playUrl));
+        } else {
+          startPlay(item.playUrl);
+        }
       }
 
       function startMusicSession(startIndex) {
@@ -6325,6 +6360,7 @@
         }
         musicWidget.style.display = 'flex';
         musicSessionCount = 0; // 新的一次一起听歌，重新计数
+        musicErrorCount = 0;
         // 指定歌曲（用户邀请梦角时）或完全随机一首歌开始，此后顺序播放
         if (typeof startIndex === 'number' && startIndex >= 0 && startIndex < musicListData.length) {
           playMusicAt(startIndex);
@@ -7724,6 +7760,14 @@
       }
       document.addEventListener('click', unlockAudioPlayback);
       document.addEventListener('touchstart', unlockAudioPlayback, { passive: true });
+
+      // 兜底恢复：邀请路径无用户手势导致 play() 被拦截时，用户点击页面任意处自动继续播放
+      document.addEventListener('click', () => {
+        if (musicAudio && musicIndex >= 0 && musicWidget.style.display !== 'none' && !musicPlaying) {
+          const p = musicAudio.play();
+          if (p && p.catch) p.catch(() => {});
+        }
+      });
 
       window.addEventListener('resize', scrollToBottom);
     })();
