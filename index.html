@@ -44,27 +44,80 @@
 
     /* 顶部栏 */
     .chat-header {
-      position: relative;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      box-sizing: border-box;
       display: flex;
       align-items: center;
-      padding: 10px 16px 10px 16px;
-      border-bottom: 1px solid rgba(0,0,0,0.06);
-      flex-shrink: 0;
-      gap: 10px;
+      padding: 10px 12px;
+      border-bottom: none;
+      background: transparent;
+      gap: 8px;
       z-index: 5;
     }
 
+    /* 横幅底：完全透明，可直接透过三块毛玻璃看到聊天背景 */
     .chat-header-bg {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      background: #ffffff;
+      background: transparent;
+      border-bottom: none;
       z-index: -1;
       pointer-events: none;
       transition: opacity 0.2s;
     }
+
+    /* 聊天壁纸：撑满整个屏幕（顶部横幅、消息区、底部输入栏后方全部可见） */
+    .chat-bg-full {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* 毛玻璃块一：梦角头像 + 昵称 + 状态 */
+    .profile-glass {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 5px 14px 5px 5px;
+      border-radius: 22px;
+      background: var(--glass-bg, rgba(255,255,255,0.45));
+      backdrop-filter: blur(16px) saturate(1.5);
+      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,0.55);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+      min-width: 0;
+    }
+
+    .profile-glass .nickname { max-width: 110px; }
+    .profile-glass .typing-status { max-width: 96px; overflow: hidden; }
+
+    /* 毛玻璃块二/三：电话按钮、三个点（圆形独立毛玻璃） */
+    .phone-icon.icon-glass,
+    .menu-dots.icon-glass {
+      background: var(--glass-bg, rgba(255,255,255,0.45));
+      backdrop-filter: blur(16px) saturate(1.5);
+      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,0.55);
+      box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    }
+
+    .phone-icon.icon-glass:hover,
+    .menu-dots.icon-glass:hover { background: var(--glass-bg-hover, rgba(255,255,255,0.7)); }
+    .phone-icon.icon-glass:active,
+    .menu-dots.icon-glass:active { background: var(--glass-bg-active, rgba(255,255,255,0.85)); }
 
     .avatar-status-col {
       display: flex;
@@ -77,7 +130,7 @@
     .avatar {
       width: 42px;
       height: 42px;
-      border-radius: 8px;
+      border-radius: 50%;
       background: #eaeaea;
       flex-shrink: 0;
       cursor: pointer;
@@ -92,16 +145,28 @@
     .avatar:hover { opacity: 0.8; }
     .avatar:active { transform: scale(0.96); }
 
-    .status-text {
-      font-size: 10px;
-      color: #888;
+    /* 状态：独立小毛玻璃，悬于头像毛玻璃正下方、完全不重叠 */
+    .status-glass {
+      position: absolute;
+      top: calc(100% - 2px);
+      left: 22px;
+      z-index: 4;
+      font-size: 9px;
+      color: #666;
       text-align: center;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      max-width: 50px;
-      line-height: 1.2;
-      margin-top: 1px;
+      max-width: 64px;
+      line-height: 1.3;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--glass-bg, rgba(255,255,255,0.45));
+      backdrop-filter: blur(16px) saturate(1.5);
+      -webkit-backdrop-filter: blur(16px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,0.55);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      pointer-events: none;
     }
 
     .nickname {
@@ -178,8 +243,7 @@
       color: #111;
     }
 
-    .phone-icon:hover { background: rgba(0,0,0,0.05); }
-    .phone-icon:active { background: rgba(0,0,0,0.08); }
+    
 
     .phone-svg { width: 20px; height: 20px; fill: #111; }
 
@@ -201,8 +265,7 @@
       outline: none;
     }
 
-    .menu-dots:hover { background: rgba(0,0,0,0.05); }
-    .menu-dots:active { background: rgba(0,0,0,0.08); }
+    
 
     .dots-svg { width: 22px; height: 22px; fill: #111; }
 
@@ -243,7 +306,7 @@
       z-index: 1;
       height: 100%;
       overflow-y: auto;
-      padding: 16px 16px 8px 16px;
+      padding: 78px 16px 8px 16px;
       display: flex;
       flex-direction: column;
       gap: 6px;
@@ -283,9 +346,9 @@
     .message-row {
       display: flex;
       width: 100%;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       position: relative;
-      gap: 8px;
+      gap: 6px;
       align-items: flex-start;
     }
 
@@ -306,7 +369,7 @@
     .msg-avatar {
       width: 36px;
       height: 36px;
-      border-radius: 6px;
+      border-radius: 50%;
       background: #eaeaea;
       background-size: cover;
       background-position: center;
@@ -335,7 +398,7 @@
 
     /* 气泡容器 */
     .bubble-wrapper {
-      max-width: calc(80% - 48px);
+      max-width: calc(80% - 46px);
       display: flex;
       flex-direction: column;
       position: relative;
@@ -346,9 +409,9 @@
 
     /* 气泡 */
     .bubble {
-      padding: 10px 14px;
-      border-radius: 22px;
-      font-size: 15px;
+      padding: 7px 12px;
+      border-radius: 18px;
+      font-size: 13px;
       line-height: 1.4;
       word-break: break-word;
       white-space: pre-wrap;
@@ -599,7 +662,7 @@
       gap: 4px;
       margin-top: 2px;
       padding: 0 4px;
-      font-size: 11px;
+      font-size: 10px;
       line-height: 1;
     }
 
@@ -618,7 +681,7 @@
     .msg-read {
       display: inline-flex;
       align-items: center;
-      font-size: 12px;
+      font-size: 11px;
       line-height: 1;
       letter-spacing: -2px;
       color: #8e8e93;
@@ -627,9 +690,9 @@
     /* 系统消息 */
     .system-bubble {
       max-width: 90%;
-      padding: 6px 16px;
-      border-radius: 16px;
-      font-size: 13px;
+      padding: 3px 12px;
+      border-radius: 12px;
+      font-size: 11px;
       line-height: 1.4;
       text-align: center;
       background: transparent;
@@ -642,7 +705,7 @@
       color: #ff3b30;
       border-color: rgba(255,59,48,0.40);
     }
-    .system-bubble.recall { color: #999; font-style: italic; font-size: 12px; }
+    .system-bubble.recall { color: #999; font-style: italic; font-size: 10px; }
 
     /* 拍一拍消息 */
     .pat-bubble {
@@ -681,14 +744,14 @@
       padding: 4px;
       background: transparent !important;
       border: none !important;
-      max-width: 120px;
-      border-radius: 16px;
+      max-width: 96px;
+      border-radius: 14px;
     }
 
     .bubble.emoji-bubble img {
       display: block;
       width: 100%;
-      max-width: 120px;
+      max-width: 96px;
       height: auto;
       border-radius: 16px;
       object-fit: cover;
@@ -699,14 +762,14 @@
       padding: 4px;
       background: transparent !important;
       border: none !important;
-      max-width: 200px;
-      border-radius: 16px;
+      max-width: 160px;
+      border-radius: 14px;
     }
 
     .bubble.image-bubble img {
       display: block;
       width: 100%;
-      max-width: 200px;
+      max-width: 160px;
       height: auto;
       border-radius: 16px;
       object-fit: cover;
@@ -741,10 +804,10 @@
 
     /* 语音条气泡 */
     .bubble.voice-bubble {
-      padding: 10px 14px;
-      border-radius: 20px;
-      max-width: 260px;
-      min-width: 120px;
+      padding: 7px 12px;
+      border-radius: 16px;
+      max-width: 220px;
+      min-width: 100px;
       cursor: default;
       position: relative;
       display: flex;
@@ -788,7 +851,7 @@
     }
 
     .voice-text {
-      font-size: 14px;
+      font-size: 12px;
       line-height: 1.4;
       word-break: break-word;
       opacity: 0.9;
@@ -3706,25 +3769,31 @@
 </head>
 <body>
   <div class="chat-container" id="chatContainer">
+    <!-- 全屏聊天壁纸层 -->
+    <div class="chat-bg-full" id="chatBgFull"></div>
+
     <!-- ===== 主聊天界面 ===== -->
     <div class="chat-header" id="chatHeader">
       <div class="chat-header-bg" id="chatHeaderBg"></div>
-      <div class="avatar-status-col">
-        <div class="avatar" id="avatar" role="button" aria-label="更换头像" tabindex="0"></div>
-        <div class="status-text" id="statusText"></div>
+      <div class="profile-glass">
+        <div class="avatar-status-col">
+          <div class="avatar" id="avatar" role="button" aria-label="更换头像" tabindex="0"></div>
+        </div>
+        <div class="nickname" id="nickname" role="button" aria-label="修改昵称" tabindex="0">梦角</div>
+        <div class="typing-status" id="typingStatus">
+          <span>对方正在输入</span>
+          <span class="typing-dots"><span></span><span></span><span></span></span>
+        </div>
       </div>
-      <div class="nickname" id="nickname" role="button" aria-label="修改昵称" tabindex="0">梦角</div>
-      <div class="typing-status" id="typingStatus">
-        <span>对方正在输入</span>
-        <span class="typing-dots"><span></span><span></span><span></span></span>
-      </div>
+      <!-- 状态：独立小毛玻璃 -->
+      <div class="status-glass" id="statusText"></div>
       <div class="header-spacer"></div>
-      <div class="phone-icon" id="phoneIcon" role="button" aria-label="电话" tabindex="0">
+      <div class="phone-icon icon-glass" id="phoneIcon" role="button" aria-label="电话" tabindex="0">
         <svg class="phone-svg" viewBox="0 0 24 24">
           <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
         </svg>
       </div>
-      <div class="menu-dots" id="menuDots" role="button" aria-label="设置" tabindex="0">
+      <div class="menu-dots icon-glass" id="menuDots" role="button" aria-label="设置" tabindex="0">
         <svg class="dots-svg" viewBox="0 0 24 24">
           <circle cx="5" cy="12" r="2.2" />
           <circle cx="12" cy="12" r="2.2" />
@@ -4589,6 +4658,7 @@
       const chatFooterBg = document.getElementById('chatFooterBg');
       const chatMessagesBg = document.getElementById('chatMessagesBg');
       const chatMessagesOverlay = document.getElementById('chatMessagesOverlay');
+      const chatBgFull = document.getElementById('chatBgFull');
       const patBtn = document.getElementById('patBtn');
       const patOverlay = document.getElementById('patOverlay');
       const patSelectList = document.getElementById('patSelectList');
@@ -5366,9 +5436,9 @@
         if (data.currentUserAvatarDataUrl) currentUserAvatarDataUrl = data.currentUserAvatarDataUrl;
         if (data.currentBgDataUrl) {
           currentBgDataUrl = data.currentBgDataUrl;
-          chatMessagesBg.style.backgroundImage = `url(${currentBgDataUrl})`;
-          chatMessagesBg.style.backgroundSize = 'cover';
-          chatMessagesBg.style.backgroundPosition = 'center';
+          chatBgFull.style.backgroundImage = `url(${currentBgDataUrl})`;
+          chatBgFull.style.backgroundSize = 'cover';
+          chatBgFull.style.backgroundPosition = 'center';
           settingBgDisplay.textContent = '已修改';
         }
         if (data.cardData) cardData = data.cardData;
@@ -6586,9 +6656,9 @@
         const reader = new FileReader();
         reader.onload = (event) => {
           currentBgDataUrl = event.target.result;
-          chatMessagesBg.style.backgroundImage = `url(${currentBgDataUrl})`;
-          chatMessagesBg.style.backgroundSize = 'cover';
-          chatMessagesBg.style.backgroundPosition = 'center';
+          chatBgFull.style.backgroundImage = `url(${currentBgDataUrl})`;
+          chatBgFull.style.backgroundSize = 'cover';
+          chatBgFull.style.backgroundPosition = 'center';
           settingBgDisplay.textContent = '已修改';
           applyBgOpacity();
         };
@@ -6609,7 +6679,10 @@
 
       function applyHeaderOpacity() {
         const opacity = headerOpacitySlider.value / 100;
-        chatHeaderBg.style.opacity = opacity.toString();
+        // 调节的是三块毛玻璃本身的透明度，不影响头像、昵称、状态等文字内容
+        chatHeader.style.setProperty('--glass-bg', 'rgba(255,255,255,' + (0.45 * opacity).toFixed(3) + ')');
+        chatHeader.style.setProperty('--glass-bg-hover', 'rgba(255,255,255,' + (0.7 * opacity).toFixed(3) + ')');
+        chatHeader.style.setProperty('--glass-bg-active', 'rgba(255,255,255,' + (0.85 * opacity).toFixed(3) + ')');
         chatFooterBg.style.opacity = opacity.toString();
       }
 
@@ -7235,11 +7308,18 @@
         document.querySelectorAll('.phone-svg, .dots-svg').forEach(el => { el.style.fill = color; });
       }
 
+      function hexToRgba(hex, alpha) {
+        const h = hex.replace('#', '');
+        const r = parseInt(h.substr(0, 2), 16);
+        const g = parseInt(h.substr(2, 2), 16);
+        const b = parseInt(h.substr(4, 2), 16);
+        return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+      }
+
       function applyOverallColor() {
         const color = overallColor.value;
         const overallTargets = [
           chatContainer,
-          chatHeaderBg,
           chatFooterBg,
           chatMessagesOverlay,
           settingsOverlay,
@@ -7256,6 +7336,8 @@
           chatSearchOverlay
         ];
         overallTargets.forEach(el => { el.style.background = color; });
+        // 顶部横幅底保持全透明，不遮挡全屏聊天壁纸
+        chatHeaderBg.style.background = 'transparent';
         document.body.style.background = adjustColor(color, -3);
       }
 
