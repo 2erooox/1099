@@ -722,6 +722,143 @@
       color: #111;
     }
 
+    /* 已读不回：梦角发送的灰色文字消息 */
+    .bubble.readnoreply-bubble { color: #999999; font-style: italic; }
+
+    /* ===== 选择删除模式 ===== */
+    .select-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      box-sizing: border-box;
+      display: none;
+      align-items: center;
+      padding: 10px 14px;
+      gap: 10px;
+      background: #ffffff;
+      border-bottom: 1px solid #f0f0f0;
+      z-index: 8;
+    }
+
+    .select-bar.open { display: flex; }
+
+    .select-bar-btn {
+      padding: 7px 18px;
+      border-radius: 18px;
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      border: none;
+      outline: none;
+      flex-shrink: 0;
+    }
+
+    .select-bar-btn.cancel { background: #f5f5f5; color: #111; }
+    .select-bar-btn.cancel:hover { background: #ebebeb; }
+    .select-bar-btn.delete { background: #ff3b30; color: #fff; }
+    .select-bar-btn.delete:hover { background: #e6352b; }
+    .select-bar-btn:active { transform: scale(0.96); }
+
+    .select-bar-count {
+      flex: 1;
+      text-align: center;
+      font-size: 14px;
+      color: #111;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 选择删除：每行消息前的圆形勾选框 */
+    .msg-select-checkbox {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #ccc;
+      background: #ffffff;
+      flex-shrink: 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+      margin-top: 8px;
+      pointer-events: none;
+    }
+
+    .msg-select-checkbox.checked { background: #111; border-color: #111; }
+
+    .msg-select-checkbox.checked::after {
+      content: '';
+      width: 9px;
+      height: 5px;
+      border-left: 2px solid #ffffff;
+      border-bottom: 2px solid #ffffff;
+      transform: rotate(-45deg) translate(1px, -1px);
+    }
+
+    .message-row.select-mode { cursor: pointer; }
+
+    /* ===== 应用内确认弹窗（替代原生 confirm，兼容内嵌 WebView） ===== */
+    .confirm-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.3);
+      z-index: 550;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .confirm-overlay.open { display: flex; }
+
+    .confirm-card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 20px;
+      width: 100%;
+      max-width: 280px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .confirm-text {
+      font-size: 15px;
+      color: #111;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .confirm-actions { display: flex; gap: 10px; }
+
+    .confirm-btn {
+      flex: 1;
+      padding: 11px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 500;
+      font-family: inherit;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+      -webkit-tap-highlight-color: transparent;
+      border: none;
+      outline: none;
+    }
+
+    .confirm-btn.cancel { background: #f5f5f5; color: #111; }
+    .confirm-btn.cancel:hover { background: #ebebeb; }
+    .confirm-btn.danger { background: #ff3b30; color: #fff; }
+    .confirm-btn.danger:hover { background: #e6352b; }
+    .confirm-btn:active { transform: scale(0.97); }
+
     /* 撤回行 */
     .recall-row {
       display: flex;
@@ -3762,6 +3899,7 @@
       .emoji-header { padding-top: max(14px, env(safe-area-inset-top)); }
       .pat-settings-header { padding-top: max(14px, env(safe-area-inset-top)); }
       .backend-settings-header { padding-top: max(14px, env(safe-area-inset-top)); }
+      .select-bar { padding-top: max(10px, env(safe-area-inset-top)); }
     }
 
     .hidden-file-input { display: none; }
@@ -3799,6 +3937,24 @@
           <circle cx="12" cy="12" r="2.2" />
           <circle cx="19" cy="12" r="2.2" />
         </svg>
+      </div>
+    </div>
+
+    <!-- ===== 选择删除模式顶栏 ===== -->
+    <div class="select-bar" id="selectBar">
+      <button class="select-bar-btn cancel" id="selectCancelBtn">取消</button>
+      <span class="select-bar-count" id="selectBarCount">已选 0 条</span>
+      <button class="select-bar-btn delete" id="selectDeleteBtn">删除</button>
+    </div>
+
+    <!-- ===== 批量删除确认弹窗（应用内，替代原生 confirm） ===== -->
+    <div class="confirm-overlay" id="confirmOverlay">
+      <div class="confirm-card">
+        <div class="confirm-text" id="confirmText"></div>
+        <div class="confirm-actions">
+          <button class="confirm-btn cancel" id="confirmCancel">取消</button>
+          <button class="confirm-btn danger" id="confirmOk">确定</button>
+        </div>
       </div>
     </div>
 
@@ -4205,6 +4361,10 @@
             <button class="backend-btn danger" id="deleteLocalBtn">删除</button>
           </div>
           <div class="backend-row">
+            <span class="backend-row-label">选择删除聊天记录</span>
+            <button class="backend-btn" id="selectDeleteChatBtn">选择删除</button>
+          </div>
+          <div class="backend-row">
             <span class="backend-row-label">清空聊天记录</span>
             <button class="backend-btn danger" id="clearChatBtn">清空</button>
           </div>
@@ -4265,7 +4425,7 @@
         <div class="setting-group" style="margin-top: 8px;">
           <div class="setting-label">说明</div>
           <div style="font-size: 13px; color: #888; line-height: 1.6; padding: 8px 4px;">
-            梦角有7%的概率发送红包。红包金额将在最低和最高之间随机选择。红包颜色可在此调整。
+            梦角有5%的概率发送红包。红包金额将在最低和最高之间随机选择。红包颜色可在此调整。
           </div>
         </div>
       </div>
@@ -4713,6 +4873,14 @@
       const askAddOptionBtn = document.getElementById('askAddOptionBtn');
       const askCancel = document.getElementById('askCancel');
       const askConfirm = document.getElementById('askConfirm');
+      const selectBar = document.getElementById('selectBar');
+      const selectBarCount = document.getElementById('selectBarCount');
+      const selectCancelBtn = document.getElementById('selectCancelBtn');
+      const selectDeleteBtn = document.getElementById('selectDeleteBtn');
+      const confirmOverlay = document.getElementById('confirmOverlay');
+      const confirmTextEl = document.getElementById('confirmText');
+      const confirmOk = document.getElementById('confirmOk');
+      const confirmCancel = document.getElementById('confirmCancel');
 
       // ===== 状态 =====
       let currentNickname = '梦角';
@@ -4758,6 +4926,8 @@
       let statusTimer = null;
       let keepAliveEnabled = false;
       let notificationEnabled = false;
+      let selectMode = false;
+      const selectedMsgIds = new Set();
 
       // ===== 字卡分类数据 =====
       const cardCategories = {
@@ -4803,6 +4973,7 @@
         if (bubble.classList.contains('system-bubble')) return;
         if (bubble.classList.contains('redpacket-bubble')) return;
         if (bubble.classList.contains('voice-bubble')) return;
+        if (bubble.classList.contains('readnoreply-bubble')) return;
         if (isOutgoing) {
           bubble.style.setProperty('--bubble-bg', userBubbleColor.value);
           bubble.style.background = 'var(--bubble-bg)';
@@ -4823,6 +4994,7 @@
           if (bubble.classList.contains('image-bubble')) return;
           if (bubble.classList.contains('redpacket-bubble')) return;
           if (bubble.classList.contains('voice-bubble')) return;
+          if (bubble.classList.contains('readnoreply-bubble')) return;
           applyBubbleStyles(bubble, row.classList.contains('outgoing'));
         });
       }
@@ -4982,6 +5154,31 @@
         return row;
       }
 
+      // 已读不回：由梦角以消息形式发送（灰色字体），而非系统提示
+      function addReadNoReplyMessage() {
+        checkTimeDivider();
+        const { row, wrapper } = createMessageRow(false);
+        row.dataset.msgType = 'readnoreply';
+        row.dataset.msgText = '已读不回';
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble readnoreply-bubble';
+        bubble.style.setProperty('--bubble-bg', mengjiaoBubbleColor.value);
+        bubble.style.background = 'var(--bubble-bg)';
+        bubble.textContent = '已读不回';
+        const meta = document.createElement('div');
+        meta.className = 'msg-meta';
+        const timeEl = document.createElement('span');
+        timeEl.className = 'msg-time';
+        timeEl.textContent = getCurrentTime();
+        meta.appendChild(timeEl);
+        wrapper.appendChild(bubble);
+        wrapper.appendChild(meta);
+        chatMessages.appendChild(row);
+        bindLongPress(row, bubble);
+        scrollToBottom();
+        return row;
+      }
+
       // ===== 系统通知 =====
       function sendNotification(title, body) {
         // 仅后台保活开启、系统弹窗开启且页面处于后台时通知；正常聊天不弹系统通知
@@ -5041,6 +5238,8 @@
           } else if (type === 'pat') {
             const pb = node.querySelector('.pat-bubble');
             item.html = pb ? pb.innerHTML : node.textContent.trim();
+          } else if (type === 'readnoreply') {
+            item.text = node.dataset.msgText || '已读不回';
           } else if (type === 'system') {
             const sb = node.querySelector('.system-bubble');
             item.text = sb ? sb.textContent.trim() : '';
@@ -5101,6 +5300,22 @@
             b.innerHTML = it.html || (it.text || '');
             row.appendChild(b);
             chatMessages.appendChild(row);
+            return;
+          }
+          if (it.t === 'readnoreply') {
+            const { row: rnrRow, wrapper: rnrWrapper } = createMessageRow(false);
+            rnrRow.dataset.msgType = 'readnoreply';
+            rnrRow.dataset.msgText = it.text || '已读不回';
+            rnrRow.dataset.msgTime = it.ts || 0;
+            const rnrBubble = document.createElement('div');
+            rnrBubble.className = 'bubble readnoreply-bubble';
+            rnrBubble.style.setProperty('--bubble-bg', mengjiaoBubbleColor.value);
+            rnrBubble.style.background = 'var(--bubble-bg)';
+            rnrBubble.textContent = it.text || '已读不回';
+            rnrWrapper.appendChild(rnrBubble);
+            rnrWrapper.appendChild(buildRestoredMeta(false, it.time));
+            chatMessages.appendChild(rnrRow);
+            bindLongPress(rnrRow, rnrBubble);
             return;
           }
           if (it.t === 'system') {
@@ -5604,6 +5819,7 @@
         quotedContent = null;
         quotedName = null;
         quoteBar.classList.remove('show');
+        exitSelectMode();
         hideMsgMenu();
         lastMessageTime = 0;
         lastMessageDate = null;
@@ -5614,6 +5830,117 @@
       }
 
       clearChatBtn.addEventListener('click', clearChatMessages);
+
+      // ===== 选择删除聊天记录：勾选需要删除的消息，其余保留（字卡、表情包等数据完全不受影响） =====
+      function getRowCheckbox(row) {
+        const first = row.firstElementChild;
+        return (first && first.classList && first.classList.contains('msg-select-checkbox')) ? first : null;
+      }
+
+      function ensureSelectCheckbox(row) {
+        if (!row || !row.dataset.msgId) return null;
+        let cb = getRowCheckbox(row);
+        if (!cb) {
+          cb = document.createElement('div');
+          cb.className = 'msg-select-checkbox';
+          row.classList.add('select-mode');
+          row.insertBefore(cb, row.firstChild);
+          if (selectedMsgIds.has(row.dataset.msgId)) cb.classList.add('checked');
+        }
+        return cb;
+      }
+
+      function enterSelectMode() {
+        if (selectMode) return;
+        selectMode = true;
+        selectedMsgIds.clear();
+        hideMsgMenu();
+        settingsOverlay.classList.remove('open');
+        backendSettingsOverlay.classList.remove('open');
+        basicSettingsOverlay.classList.remove('open');
+        selectBar.classList.add('open');
+        updateSelectBarCount();
+        document.querySelectorAll('#chatMessages .message-row').forEach((row) => {
+          ensureSelectCheckbox(row);
+        });
+      }
+
+      function exitSelectMode() {
+        if (!selectMode) return;
+        selectMode = false;
+        selectedMsgIds.clear();
+        selectBar.classList.remove('open');
+        document.querySelectorAll('#chatMessages .message-row.select-mode').forEach((row) => {
+          row.classList.remove('select-mode');
+          const cb = getRowCheckbox(row);
+          if (cb) row.removeChild(cb);
+        });
+      }
+
+      function updateSelectBarCount() {
+        selectBarCount.textContent = '已选 ' + selectedMsgIds.size + ' 条';
+      }
+
+      function toggleRowSelection(row) {
+        if (!selectMode || !row || !row.dataset.msgId) return;
+        const cb = ensureSelectCheckbox(row);
+        if (!cb) return;
+        const id = row.dataset.msgId;
+        if (selectedMsgIds.has(id)) {
+          selectedMsgIds.delete(id);
+          cb.classList.remove('checked');
+        } else {
+          selectedMsgIds.add(id);
+          cb.classList.add('checked');
+        }
+        updateSelectBarCount();
+      }
+
+      // 应用内确认弹窗：替代原生 confirm，避免部分 WebView 拦截/遮挡导致删除无响应
+      let confirmResolve = null;
+      function showConfirm(text) {
+        return new Promise((resolve) => {
+          confirmResolve = resolve;
+          confirmTextEl.textContent = text;
+          confirmOverlay.classList.add('open');
+        });
+      }
+      function settleConfirm(v) {
+        confirmOverlay.classList.remove('open');
+        if (confirmResolve) { confirmResolve(v); confirmResolve = null; }
+      }
+
+      async function deleteSelectedMessages() {
+        if (selectedMsgIds.size === 0) { showToast('请先勾选要删除的消息'); return; }
+        const ok = await showConfirm('确定删除选中的 ' + selectedMsgIds.size + ' 条聊天记录吗？此操作不可恢复。');
+        if (!ok) return;
+        const rowsToDelete = [];
+        chatMessages.querySelectorAll('.message-row').forEach((row) => {
+          if (row.dataset.msgId && selectedMsgIds.has(row.dataset.msgId)) rowsToDelete.push(row);
+        });
+        rowsToDelete.forEach((row) => { if (row.parentNode) row.parentNode.removeChild(row); });
+        outgoingMessages = outgoingMessages.filter((r) => r.isConnected);
+        exitSelectMode();
+        scheduleAutoSaveChat();
+        storageStatus.textContent = '已删除所选聊天记录';
+      }
+
+      selectDeleteChatBtn.addEventListener('click', enterSelectMode);
+      selectCancelBtn.addEventListener('click', exitSelectMode);
+      selectDeleteBtn.addEventListener('click', deleteSelectedMessages);
+      confirmOk.addEventListener('click', () => settleConfirm(true));
+      confirmCancel.addEventListener('click', () => settleConfirm(false));
+      confirmOverlay.addEventListener('click', (e) => { if (e.target === confirmOverlay) settleConfirm(false); });
+
+      // 选择模式下点击消息行切换勾选（捕获阶段拦截，避免触发红包领取等子元素点击）
+      chatMessages.addEventListener('click', (e) => {
+        if (!selectMode) return;
+        const row = e.target.closest('.message-row');
+        if (!row) return;
+        e.preventDefault();
+        e.stopPropagation();
+        toggleRowSelection(row);
+      }, true);
 
       // ===== 查找聊天记录：输入文字匹配文字/语音/提问消息，点击结果定位到该消息 =====
       openChatSearchBtn.addEventListener('click', () => {
@@ -6073,7 +6400,7 @@
 
       // 撤回消息
       function recallMessage(row) {
-        if (!row || row.dataset.msgType === 'system' || row.dataset.msgType === 'pat') return;
+        if (!row || row.dataset.msgType === 'system' || row.dataset.msgType === 'pat' || row.dataset.msgType === 'readnoreply') return;
         if (!row.classList.contains('outgoing')) return;
         const recallDiv = document.createElement('div');
         recallDiv.className = 'recall-row';
@@ -6090,7 +6417,7 @@
       // 若发送时没有抽中撤回，则这句话永远不会被撤回
       function maybeRecallMengjiaoMessage(row) {
         if (!row) return;
-        if (Math.random() >= 0.07) return;
+        if (Math.random() >= 0.06) return;
         setTimeout(() => {
           if (!row || !row.isConnected || !row.parentNode) return;
           const recallDiv = document.createElement('div');
@@ -6109,7 +6436,8 @@
         let pressTimer = null;
         let longPressed = false;
         const startPress = (e) => {
-          if (row.dataset.msgType === 'system' || row.dataset.msgType === 'pat') return;
+          if (selectMode) return;
+          if (row.dataset.msgType === 'system' || row.dataset.msgType === 'pat' || row.dataset.msgType === 'readnoreply') return;
           longPressed = false;
           pressTimer = setTimeout(() => {
             longPressed = true;
@@ -6175,7 +6503,7 @@
       });
 
       function quoteMessage(row) {
-        if (!row || row.dataset.msgType === 'system' || row.dataset.msgType === 'pat') return;
+        if (!row || row.dataset.msgType === 'system' || row.dataset.msgType === 'pat' || row.dataset.msgType === 'readnoreply') return;
         const type = row.dataset.msgType;
         let content = '';
         if (type === 'text') content = row.dataset.msgText || '消息';
@@ -6275,14 +6603,23 @@
         if (allCards.length === 0) return;
 
         if (readNoReplyEnabled && Math.random() < 0.1) {
-          sendQueue.forEach(row => markAsRead(row));
+          // 已读不回：照常经过回复间隔并显示“正在输入”，仅将用户消息标记为已读，
+          // 随后由梦角发送灰色文字消息「已读不回」
+          const noReplyDelay = replyRate * 1000 + Math.random() * 500;
+          showTyping();
+          setTimeout(() => {
+            if (sendQueue.length > 0) { sendQueue.forEach(row => markAsRead(row)); sendQueue.length = 0; }
+            addReadNoReplyMessage();
+            sendNotification(currentNickname, '已读不回');
+            setTimeout(hideTyping, 800);
+          }, noReplyDelay);
           return;
         }
 
         const shouldProactivelyCall = !isCallActive &&
           !incomingCallOverlay.classList.contains('open') &&
           !document.hidden && // 后台时不弹来电，避免退出网页时的多余打扰
-          Math.random() < 0.08;
+          Math.random() < 0.07;
         const count = Math.floor(Math.random() * 2) + 1;
         showTyping();
 
@@ -6314,7 +6651,7 @@
               }
               maybeRecallMengjiaoMessage(addMessage(cards.join(' '), false));
               if (notificationEnabled) sendNotification('梦角发来消息', cards.join(' '));
-            } else if (rand < 0.47) {
+            } else if (rand < 0.45) {
               const min = parseFloat(redpacketAmountMin.value) || 1;
               const max = parseFloat(redpacketAmountMax.value) || 20;
               const amount = (Math.random() * (max - min) + min).toFixed(2);
@@ -6924,7 +7261,7 @@
         if (!isCallActive &&
             !incomingCallOverlay.classList.contains('open') &&
             !document.hidden && // 后台时不弹来电
-            Math.random() < 0.08) {
+            Math.random() < 0.07) {
           showIncomingCall();
           return;
         }
